@@ -20,13 +20,13 @@ A highly secure, reusable, database-backed authentication, user management, and 
 Install the package directly into your virtual environment:
 
 ```bash
-pip install authkit-fastapi
+pip install fast-authkit
 ```
 
 Or using `uv`:
 
 ```bash
-uv add authkit-fastapi
+uv add fast-authkit
 ```
 
 ---
@@ -290,36 +290,7 @@ To help you understand how AuthKit secures your application under the hood, here
 
 This sequence diagram illustrates the steps when a user logs in, accesses a protected API statelessly, and requests new tokens when their access token expires:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as User/Browser
-    participant Server as FastAPI (AuthKit)
-    participant DB as Database (SQLAlchemy)
-
-    Note over User, DB: 1. Login & Token Generation Flow
-    User->>Server: POST /auth/login (email, password)
-    Server->>DB: Query User record
-    DB-->>Server: Return User (role, hashed_pwd)
-    Server->>Server: Verify password & Generate Access & Refresh (JTI) Tokens
-    Server->>DB: Create Session (JTI, User-Agent, IP)
-    Server-->>User: Set-Cookie: Access & Refresh Tokens (HTTP-Only)
-
-    Note over User, DB: 2. Accessing Protected Route (Stateless)
-    User->>Server: GET /secure-data (Sends Access Cookie automatically)
-    Server->>Server: Decode & Verify Access Token (Stateless)
-    Server-->>User: Return Secure Data (200 OK)
-
-    Note over User, DB: 3. Token Rotation (Access Token Expired)
-    User->>Server: GET /secure-data (Access Token expired)
-    Server-->>User: 401 Unauthorized (Request /refresh)
-    User->>Server: POST /auth/refresh (Sends Refresh Cookie automatically)
-    Server->>DB: Query Session by JTI (Verify active & not revoked)
-    DB-->>Server: Return Session Record
-    Server->>DB: Revoke old JTI (is_revoked = True)
-    Server->>DB: Create new Session JTI
-    Server-->>User: Set-Cookie: New Access & Refresh Tokens
-```
+![Token & Session Lifecycle](https://raw.githubusercontent.com/moulisai2296/fast-authkit/main/docs/AuthKit%20Token%20Management.png)
 
 #### Under the Hood:
 1.  **Login**: On successful authentication, AuthKit generates two JWTs: an **Access Token** (short lifespan) and a **Refresh Token** (long lifespan containing a unique random ID called `jti`).
@@ -333,30 +304,7 @@ sequenceDiagram
 
 This sequence diagram explains how AuthKit sends a password reset link and guarantees it cannot be reused (is strictly single-use) without creating extra database state:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as User/Browser
-    participant Server as FastAPI (AuthKit)
-    participant DB as Database (SQLAlchemy)
-
-    Note over User, DB: 1. Request Reset Link
-    User->>Server: POST /auth/forgot-password (email)
-    Server->>DB: Query User by email
-    DB-->>Server: Return User (current_hashed_password)
-    Server->>Server: Create Reset Token signed with current password hash (pwd_sec)
-    Server-->>User: Send email with Reset URL (?token=...)
-
-    Note over User, DB: 2. Password Reset Submission
-    User->>Server: POST /auth/reset-password (token, new_password)
-    Server->>DB: Query User by ID
-    DB-->>Server: Return User (current_hashed_password)
-    Server->>Server: Verify token claims & Compare token.pwd_sec with current password hash
-    Server->>Server: Validate password complexity rules
-    Server->>DB: Update password hash & Set is_revoked = True on all refresh tokens
-    DB-->>Server: Commit updates
-    Server-->>User: Password Reset Successful (Token now invalid for reuse)
-```
+![Password Reset Lifecycle](https://raw.githubusercontent.com/moulisai2296/fast-authkit/main/docs/Password%20Reset%20Workflow.png)
 
 #### Under the Hood:
 1.  **Link Request**: The user submits their email. AuthKit reads their current `hashed_password` from the database.

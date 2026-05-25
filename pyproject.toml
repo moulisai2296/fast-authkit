@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "authkit-fastapi"
-version = "0.1.0"
+name = "fast-authkit"
+version = "0.1.2"
 description = "A reusable, database-backed authentication, user management, and audit logs plugin for FastAPI with a built-in admin dashboard."
 readme = "README.md"
 requires-python = ">=3.9"
