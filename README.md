@@ -290,7 +290,7 @@ To help you understand how AuthKit secures your application under the hood, here
 
 This sequence diagram illustrates the steps when a user logs in, accesses a protected API statelessly, and requests new tokens when their access token expires:
 
-![Token & Session Lifecycle](https://raw.githubusercontent.com/moulisai2296/fast-authkit/main/docs/AuthKit%20Token%20Management.png)
+![Token & Session Lifecycle](https://raw.githubusercontent.com/moulisai2296/authkit-fastapi/main/docs/AuthKit%20Token%20Management.png)
 
 #### Under the Hood:
 1.  **Login**: On successful authentication, AuthKit generates two JWTs: an **Access Token** (short lifespan) and a **Refresh Token** (long lifespan containing a unique random ID called `jti`).
@@ -304,7 +304,7 @@ This sequence diagram illustrates the steps when a user logs in, accesses a prot
 
 This sequence diagram explains how AuthKit sends a password reset link and guarantees it cannot be reused (is strictly single-use) without creating extra database state:
 
-![Password Reset Lifecycle](https://raw.githubusercontent.com/moulisai2296/fast-authkit/main/docs/Password%20Reset%20Workflow.png)
+![Password Reset Lifecycle](https://raw.githubusercontent.com/moulisai2296/authkit-fastapi/main/docs/Password%20Reset%20Workflow.png)
 
 #### Under the Hood:
 1.  **Link Request**: The user submits their email. AuthKit reads their current `hashed_password` from the database.
