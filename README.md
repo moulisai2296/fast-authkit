@@ -275,70 +275,50 @@ uv run pytest
 
 To help you understand how AuthKit secures your application under the hood, here is a detailed breakdown of the token lifecycle, database session tracking, and the password reset flow.
 
-### 🎭 The Real-World Analogy
+### 🎭 The Real-World Analogy: The Amusement Park
 
-*   **Access Token (The Movie Ticket)**: 
-    When you enter a movie theater, the ticket collector checks your ticket. They don't call the bank or check the database; they just verify the ticket is valid and let you in immediately. However, the ticket expires quickly (15 minutes) so that if you lose it, someone else can't use it forever.
-*   **Refresh Token (The Membership ID Card)**: 
-    When your movie ticket expires, you go back to the front desk. You show your Membership ID Card. The front desk checks the computer (database) to verify your account is active and hasn't been banned. If it is active, they print you a new Movie Ticket (Access Token) and rotate your Membership Card (Refresh Token) for security.
-*   **Revocation (Banning the Card)**: 
-    If you click "Logout" or an admin clicks "Revoke Session", your Membership ID Card (Refresh Token JTI) is marked as banned in the computer (database). The next time you try to get a new Movie Ticket, the front desk rejects you immediately.
+*   **Access Token (The Daily Ride Wristband)**: 
+    When you enter the amusement park, you get a colored paper wristband for the day. At every ride (endpoint), the ride operator (server middleware) just looks at your wristband to verify today's color. They don't check a computer database. It's extremely fast and easy. However, the wristband expires at the end of the day (short-lived Access Token) so you can't reuse it tomorrow.
+*   **Refresh Token (The Annual Season Pass Card)**: 
+    To get a new daily wristband tomorrow, you go to the ticket booth (the `/refresh` endpoint) and scan your Season Pass Card (Refresh Token). The ticket booth agent checks the computer database (database lookup) to verify your season pass is active, paid, and has not been reported lost or stolen. If it is valid, they issue you a new daily wristband (Access Token) and rotate your Season Pass Card (Refresh Token JTI) for safety.
+*   **Revocation (Reporting the Card Lost/Stolen)**: 
+    If you lose your season pass, you report it. The park flags it as blocked (revoked) in the computer database. If someone else tries to use that season pass to get a wristband, the computer rejects it instantly, even if the expiration date on the card is still in the future.
 
 ---
 
 ### 1. Token & Session Lifecycle (Login, Access, and Refresh)
 
-This diagram shows how users log in, access private endpoints, and rotate tokens once their access token expires:
+This sequence diagram illustrates the steps when a user logs in, accesses a protected API statelessly, and requests new tokens when their access token expires:
 
 ```mermaid
-graph TD
-    %% Styling
-    classDef client fill:#171c29,stroke:#06b6d4,stroke-width:2px,color:#f3f4f6;
-    classDef server fill:#171c29,stroke:#a855f7,stroke-width:2px,color:#f3f4f6;
-    classDef database fill:#0b0f19,stroke:#10b981,stroke-width:2px,color:#f3f4f6;
-    
-    subgraph Client [Browser / Client]
-        A[User Input: Credentials]
-        CookieStore[(Browser Cookie Store)]
-    end
+sequenceDiagram
+    autonumber
+    actor User as User/Browser
+    participant Server as FastAPI (AuthKit)
+    participant DB as Database (SQLAlchemy)
 
-    subgraph Server [FastAPI App & AuthKit]
-        B{Verify Email & Password}
-        C[Generate Access Token <br> Short-lived: 15m]
-        D[Generate Refresh Token <br> Long-lived: 7d with JTI]
-        E{Check Token Expiry & Claims}
-        F{Verify Session JTI is Active}
-        G[Rotate Tokens: <br> Revoke old JTI & Issue new JTI]
-    end
+    Note over User, DB: 1. Login & Token Generation Flow
+    User->>Server: POST /auth/login (email, password)
+    Server->>DB: Query User record
+    DB-->>Server: Return User (role, hashed_pwd)
+    Server->>Server: Verify password & Generate Access & Refresh (JTI) Tokens
+    Server->>DB: Create Session (JTI, User-Agent, IP)
+    Server-->>User: Set-Cookie: Access & Refresh Tokens (HTTP-Only)
 
-    subgraph DB [Database]
-        TokenDB[(RefreshToken Table)]
-    end
+    Note over User, DB: 2. Accessing Protected Route (Stateless)
+    User->>Server: GET /secure-data (Sends Access Cookie automatically)
+    Server->>Server: Decode & Verify Access Token (Stateless)
+    Server-->>User: Return Secure Data (200 OK)
 
-    %% Login Flow
-    A -->|1. Submit Login| B
-    B -->|2. Valid| C
-    B -->|2. Valid| D
-    D -->|3. Store Session JTI| TokenDB
-    C -->|4. Set Access Cookie| CookieStore
-    D -->|4. Set Refresh Cookie| CookieStore
-
-    %% Protected Route Flow
-    CookieStore -->|5. Send Access Token| E
-    E -->|6. Valid & Not Expired| H[Grant Route Access]
-    E -->|6. Expired / Invalid| I[Request /refresh]
-
-    %% Refresh Token Flow
-    I -->|7. Send Refresh Token| F
-    F -->|8. Query Session JTI| TokenDB
-    TokenDB -->|9. Active / Not Revoked| G
-    TokenDB -->|9. Revoked| J[Force Logout / Redirect]
-    G -->|10. Store New JTI| TokenDB
-    G -->|11. Set New Cookies| CookieStore
-
-    class Client,A,CookieStore client;
-    class Server,B,C,D,E,F,G,H,I,J server;
-    class DB,TokenDB database;
+    Note over User, DB: 3. Token Rotation (Access Token Expired)
+    User->>Server: GET /secure-data (Access Token expired)
+    Server-->>User: 401 Unauthorized (Request /refresh)
+    User->>Server: POST /auth/refresh (Sends Refresh Cookie automatically)
+    Server->>DB: Query Session by JTI (Verify active & not revoked)
+    DB-->>Server: Return Session Record
+    Server->>DB: Revoke old JTI (is_revoked = True)
+    Server->>DB: Create new Session JTI
+    Server-->>User: Set-Cookie: New Access & Refresh Tokens
 ```
 
 #### Under the Hood:
@@ -351,43 +331,31 @@ graph TD
 
 ### 2. Single-Use Password Reset Flow
 
-This diagram explains how AuthKit sends a password reset link and guarantees it cannot be reused (is strictly single-use) without creating extra database state:
+This sequence diagram explains how AuthKit sends a password reset link and guarantees it cannot be reused (is strictly single-use) without creating extra database state:
 
 ```mermaid
-graph TD
-    classDef client fill:#171c29,stroke:#06b6d4,stroke-width:2px,color:#f3f4f6;
-    classDef server fill:#171c29,stroke:#a855f7,stroke-width:2px,color:#f3f4f6;
-    classDef database fill:#0b0f19,stroke:#10b981,stroke-width:2px,color:#f3f4f6;
+sequenceDiagram
+    autonumber
+    actor User as User/Browser
+    participant Server as FastAPI (AuthKit)
+    participant DB as Database (SQLAlchemy)
 
-    subgraph Browser
-        A[Request Reset Link]
-        C[Open Reset URL from Email]
-        E[Submit New Password]
-    end
+    Note over User, DB: 1. Request Reset Link
+    User->>Server: POST /auth/forgot-password (email)
+    Server->>DB: Query User by email
+    DB-->>Server: Return User (current_hashed_password)
+    Server->>Server: Create Reset Token signed with current password hash (pwd_sec)
+    Server-->>User: Send email with Reset URL (?token=...)
 
-    subgraph FastAPI [FastAPI Backend]
-        B[Create Reset Token <br> Sign with current password hash]
-        D{Validate Token & Check pwd_sec <br> Matches current password hash?}
-        F[Update Password Hash <br> Revoke All Active Sessions]
-    end
-
-    subgraph DB [Database]
-        UserDB[(User Table)]
-    end
-
-    A -->|1. Email Address| B
-    B -->|Read Password Hash| UserDB
-    B -->|2. Email Link Sent| C
-    C -->|3. Token sent to backend| D
-    D -->|Read Current Password Hash| UserDB
-    D -->|4a. Matches| E
-    D -->|4b. Mis-match: Used Token| G[Error: Invalid Token]
-    E -->|5. Submit| F
-    F -->|6. Write New Password Hash| UserDB
-
-    class Browser,A,C,E client;
-    class FastAPI,B,D,F,G server;
-    class DB,UserDB database;
+    Note over User, DB: 2. Password Reset Submission
+    User->>Server: POST /auth/reset-password (token, new_password)
+    Server->>DB: Query User by ID
+    DB-->>Server: Return User (current_hashed_password)
+    Server->>Server: Verify token claims & Compare token.pwd_sec with current password hash
+    Server->>Server: Validate password complexity rules
+    Server->>DB: Update password hash & Set is_revoked = True on all refresh tokens
+    DB-->>Server: Commit updates
+    Server-->>User: Password Reset Successful (Token now invalid for reuse)
 ```
 
 #### Under the Hood:
@@ -396,4 +364,3 @@ graph TD
 3.  **Submission & Verification**: When the user opens the link and submits a new password, the server decodes the token, fetches the user, and compares the token's `pwd_sec` against the user's *current* database password hash.
 4.  **Immediate Invalidation**: Once the password is reset, the user's password hash in the database is updated. If the user clicks the reset link in the email again, the token's `pwd_sec` will no longer match the user's new password hash, causing the validation to fail immediately.
 5.  **Session Cleanup**: Updating the password automatically revokes all other active device sessions (sets `is_revoked = True` for all of the user's refresh tokens) for maximum account security.
-
