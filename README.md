@@ -279,10 +279,10 @@ To help you understand how AuthKit secures your application under the hood, here
 
 *   **Access Token (The Daily Ride Wristband)**: 
     When you enter the amusement park, you get a colored paper wristband for the day. At every ride (endpoint), the ride operator (server middleware) just looks at your wristband to verify today's color. They don't check a computer database. It's extremely fast and easy. However, the wristband expires at the end of the day (short-lived Access Token) so you can't reuse it tomorrow.
-*   **Refresh Token (The Annual Season Pass Card)**: 
-    To get a new daily wristband tomorrow, you go to the ticket booth (the `/refresh` endpoint) and scan your Season Pass Card (Refresh Token). The ticket booth agent checks the computer database (database lookup) to verify your season pass is active, paid, and has not been reported lost or stolen. If it is valid, they issue you a new daily wristband (Access Token) and **print a new validation barcode on your pass (representing the rotated JTI/Refresh Token)** so that the previous code can never be reused.
-*   **Revocation (Reporting the Card Lost/Stolen)**: 
-    If you lose your season pass, you report it. The park flags it as blocked (revoked) in the computer database. If someone else tries to use that season pass to get a wristband, the computer rejects it instantly, even if the expiration date on the card is still in the future.
+*   **Refresh Token (The 7-Day Season Pass Card)**: 
+    To get a new daily wristband tomorrow, you go to the ticket booth (the `/refresh` endpoint) and scan your Season Pass Card (Refresh Token). The agent checks the database to verify your card is active and not blocked. If valid, they issue a new daily wristband (Access Token), **print a new barcode on your card for security (Refresh Token Rotation)**, and **extend your card's validity for another 7 days (rolling expiry)**. However, if you don't visit the park for 7 consecutive days, your card expires, and you must go to the main office (log in again with password) to get a new one.
+*   **Revocation (Blacklisting the Card)**: 
+    If you click "Logout" or an admin deactivates your account, your Season Pass Card's barcode is instantly blacklisted in the system database. The next time you try to scan it at the ticket booth, it is rejected immediately, even if the 7-day timer has not run out.
 
 ---
 
