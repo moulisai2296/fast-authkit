@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AuthKit Admin{% endblock %}</title>
+    <!-- Modern Typography: Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(23, 28, 41, 0.65);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --primary-glow: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%);
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --accent-success: #10b981;
+            --accent-danger: #ef4444;
+            --accent-warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Ambient Glowing Accents */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            top: -100px;
+            left: -100px;
+            background: rgba(139, 92, 246, 0.15);
+            filter: blur(120px);
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            bottom: -100px;
+            right: -100px;
+            background: rgba(6, 182, 212, 0.15);
+            filter: blur(130px);
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        /* Glassmorphic Navbar */
+        nav {
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.25rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.025em;
+            background: var(--primary-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            list-style: none;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-primary);
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-logout:hover {
+            background: var(--accent-danger);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Container & Layout */
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            flex-grow: 1;
+        }
+
+        /* Shared Card Component */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            transition: border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Table Wrapper & Custom Scrollbars */
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: hidden; /* Prevent vertical scrollbar */
+            width: 100%;
+        }
+
+        /* Premium Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Forms Styling */
+        .form-group {
+            margin-bottom: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        input, select {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+        }
+
+        /* Custom Confirmation Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(11, 15, 25, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            transform: scale(0.95);
+            animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .modal-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: var(--primary-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-card p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-modal-cancel {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-modal-cancel:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-modal-confirm {
+            background: var(--primary-glow);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.25);
+        }
+
+        .btn-modal-confirm:hover {
+            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-modal-confirm.danger {
+            background: var(--accent-danger);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-modal-confirm.danger:hover {
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+
+        /* Beautiful Toast Notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            background: rgba(23, 28, 41, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            min-width: 250px;
+        }
+
+        .toast.success { border-left: 4px solid var(--accent-success); }
+        .toast.error { border-left: 4px solid var(--accent-danger); }
+        .toast.warning { border-left: 4px solid var(--accent-warning); }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%) translateY(10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+
+    {% if show_nav is not defined or show_nav %}
+    <nav>
+        <a href="{{ admin_path }}/dashboard" class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 5C13.66 5 15 6.34 15 8C15 9.66 13.66 11 12 11C10.34 11 9 9.66 9 8C9 6.34 10.34 5 12 5ZM12 19.2C9.5 19.2 7.29 17.92 6 15.98C6.03 13.99 10 12.9 12 12.9C13.99 12.9 17.97 13.99 18 15.98C16.71 17.92 14.5 19.2 12 19.2Z" fill="url(#logo-grad)"/>
+                <defs>
+                    <linearGradient id="logo-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#a855f7"/>
+                        <stop offset="1" stop-color="#06b6d4"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            AuthKit Admin
+        </a>
+        <ul class="nav-links">
+            <li><a href="{{ admin_path }}/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Users</a></li>
+            <li><a href="{{ admin_path }}/audit-logs" class="nav-link {% if active_page == 'audit_logs' %}active{% endif %}">Audit Logs</a></li>
+            <li><button onclick="handleLogout()" class="btn-logout">Logout</button></li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer>
+        <p>&copy; 2026 AuthKit. Safety first, out of the box authentication.</p>
+    </footer>
+
+    <div id="toast-container"></div>
+
+    <!-- Beautiful In-App Custom Glassmorphic Confirmation Modal -->
+    <div id="confirm-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h3 id="confirm-modal-title">Confirm Action</h3>
+            <p id="confirm-modal-message">Are you sure you want to proceed?</p>
+            <div class="modal-actions">
+                <button id="confirm-modal-cancel" class="btn-modal-cancel">Cancel</button>
+                <button id="confirm-modal-confirm" class="btn-modal-confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Floating Toast Script
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            // Checkmark or X icon depending on type
+            let icon = '';
+            if (type === 'success') {
+                icon = '<span style="color: var(--accent-success)">✓</span>';
+            } else if (type === 'error') {
+                icon = '<span style="color: var(--accent-danger)">✗</span>';
+            } else {
+                icon = '<span style="color: var(--accent-warning)">!</span>';
+            }
+            
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) reverse forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Custom Modal Confirmation Script
+        let confirmResolve = null;
+
+        function showConfirmModal(title, message, isDanger = false) {
+            const modal = document.getElementById('confirm-modal');
+            const titleEl = document.getElementById('confirm-modal-title');
+            const messageEl = document.getElementById('confirm-modal-message');
+            const confirmBtn = document.getElementById('confirm-modal-confirm');
+            
+            titleEl.textContent = title;
+            messageEl.innerHTML = message.replace(/\n/g, '<br>');
+            
+            if (isDanger) {
+                confirmBtn.classList.add('danger');
+            } else {
+                confirmBtn.classList.remove('danger');
+            }
+            
+            modal.style.display = 'flex';
+            
+            return new Promise((resolve) => {
+                confirmResolve = resolve;
+            });
+        }
+
+        function closeConfirmModal(result) {
+            const modal = document.getElementById('confirm-modal');
+            modal.style.display = 'none';
+            if (confirmResolve) {
+                confirmResolve(result);
+                confirmResolve = null;
+            }
+        }
+
+        document.getElementById('confirm-modal-cancel').addEventListener('click', () => closeConfirmModal(false));
+        document.getElementById('confirm-modal-confirm').addEventListener('click', () => closeConfirmModal(true));
+        
+        // Close modal when clicking outside the card
+        document.getElementById('confirm-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'confirm-modal') {
+                closeConfirmModal(false);
+            }
+        });
+
+        async function handleLogout() {
+            try {
+                const response = await fetch('/auth/logout', { method: 'POST' });
+                if (response.ok) {
+                    showToast('Logged out successfully', 'success');
+                    setTimeout(() => {
+                        window.location.href = '{{ admin_path }}/login';
+                    }, 800);
+                } else {
+                    showToast('Failed to log out', 'error');
+                }
+            } catch (error) {
+                showToast('Logout connection error', 'error');
+            }
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

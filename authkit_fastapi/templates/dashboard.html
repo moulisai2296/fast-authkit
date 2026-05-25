@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AuthKit Admin{% endblock %}
+
+{% block extra_css %}
+/* Metrics Grid Layout */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.metric-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    border-radius: 12px;
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: rgba(139, 92, 246, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--accent-purple);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.metric-info h3 {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.metric-info p {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+/* User management list and tables */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 3rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+th {
+    padding: 1rem 1.5rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+td {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+tr:hover td {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+/* Switches & Badges */
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-verified {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge-unverified {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--accent-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* Role Dropdown Select custom design */
+.role-select {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    width: auto;
+    cursor: pointer;
+}
+
+/* Toggle Switch Styling */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background: var(--primary-glow);
+    border-color: transparent;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* Delete Button */
+.btn-delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.btn-delete:hover {
+    background: var(--accent-danger);
+    color: white;
+}
+
+.btn-revoke {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--accent-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.btn-revoke:hover {
+    background: var(--accent-warning);
+    color: black;
+}
+{% endblock %}
+
+{% block content %}
+<!-- Metrics Block -->
+<div class="metrics-grid">
+    <div class="card metric-card">
+        <div class="metric-icon">👥</div>
+        <div class="metric-info">
+            <h3>Total Users</h3>
+            <p>{{ stats.total_users }}</p>
+        </div>
+    </div>
+    <div class="card metric-card">
+        <div class="metric-icon" style="color: var(--accent-cyan); border-color: rgba(6, 182, 212, 0.2); background: rgba(6, 182, 212, 0.15)">⚡</div>
+        <div class="metric-info">
+            <h3>Active Users</h3>
+            <p>{{ stats.active_users }}</p>
+        </div>
+    </div>
+    <div class="card metric-card">
+        <div class="metric-icon" style="color: var(--accent-success); border-color: rgba(16, 185, 129, 0.2); background: rgba(16, 185, 129, 0.15)">🔒</div>
+        <div class="metric-info">
+            <h3>Active Sessions</h3>
+            <p>{{ stats.active_sessions }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- User Management Table -->
+<div class="dashboard-header">
+    <h2 class="dashboard-title">User Database</h2>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden; margin-bottom: 2.5rem;">
+    <div class="table-wrapper">
+        <table style="width: 100%; min-width: 800px; table-layout: auto;">
+            <thead>
+                <tr>
+                    <th style="min-width: 250px; white-space: nowrap;">Email Address</th>
+                    <th style="width: 180px; min-width: 180px; white-space: nowrap;">Created At</th>
+                    <th style="width: 150px; min-width: 150px; white-space: nowrap;">Role</th>
+                    <th style="width: 100px; min-width: 100px; white-space: nowrap;">Status</th>
+                    <th style="width: 120px; min-width: 120px; white-space: nowrap;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr id="user-row-{{ u.id }}">
+                    <td style="font-weight: 500; white-space: nowrap;">
+                        {{ u.email }}
+                        {% if u.is_verified %}
+                        <span class="badge badge-verified">Verified</span>
+                        {% else %}
+                        <span class="badge badge-unverified">Unverified</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-secondary); white-space: nowrap;">{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <select class="role-select" onchange="updateUserRole('{{ u.id }}', this.value)">
+                            <option value="user" {% if u.role == 'user' %}selected{% endif %}>User</option>
+                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                            <option value="moderator" {% if u.role == 'moderator' %}selected{% endif %}>Moderator</option>
+                        </select>
+                    </td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox" {% if u.is_active %}checked{% endif %} onchange="toggleUserStatus('{{ u.id }}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td>
+                        <button class="btn-delete" onclick="deleteUser('{{ u.id }}', '{{ u.email }}')">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Sessions Table -->
+<div class="dashboard-header">
+    <h2 class="dashboard-title">Active Device Sessions</h2>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+    <div class="table-wrapper">
+        <table style="width: 100%; min-width: 850px; table-layout: auto;">
+            <thead>
+                <tr>
+                    <th style="min-width: 220px; white-space: nowrap;">User</th>
+                    <th style="width: 140px; min-width: 140px; white-space: nowrap;">IP Address</th>
+                    <th style="min-width: 220px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">User Agent</th>
+                    <th style="width: 180px; min-width: 180px; white-space: nowrap;">Expires At</th>
+                    <th style="width: 120px; min-width: 120px; white-space: nowrap;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if not sessions %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 2rem;">No active sessions found.</td>
+                </tr>
+                {% endif %}
+                {% for s in sessions %}
+                <tr id="session-row-{{ s.id }}">
+                    <td style="font-weight: 500; white-space: nowrap;">{{ s.user.email }}</td>
+                    <td style="color: var(--text-secondary); font-family: monospace; white-space: nowrap;">{{ s.ip_address or 'Unknown' }}</td>
+                    <td title="{{ s.user_agent }}">
+                        <div style="color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ s.user_agent or 'Unknown' }}
+                        </div>
+                    </td>
+                    <td style="color: var(--text-secondary); white-space: nowrap;">{{ s.expires_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <button class="btn-revoke" onclick="revokeSession('{{ s.id }}')">Revoke</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // AJAX Handlers
+    async function defRequest(url, data = {}) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    }
+
+    async function toggleUserStatus(userId, isActive) {
+        try {
+            const response = await defRequest(`{{ admin_path }}/users/${userId}/toggle-active`, { is_active: isActive });
+            if (response.ok) {
+                showToast(isActive ? 'User account activated' : 'User account deactivated', 'success');
+            } else {
+                showToast('Failed to change user status', 'error');
+            }
+        } catch (error) {
+            showToast('Connection error', 'error');
+        }
+    }
+
+    async function updateUserRole(userId, newRole) {
+        try {
+            const response = await defRequest(`{{ admin_path }}/users/${userId}/change-role`, { role: newRole });
+            if (response.ok) {
+                showToast(`User role updated to ${newRole}`, 'success');
+            } else {
+                showToast('Failed to update user role', 'error');
+            }
+        } catch (error) {
+            showToast('Connection error', 'error');
+        }
+    }
+
+    async function deleteUser(userId, email) {
+        const confirmed = await showConfirmModal(
+            'Delete User Account',
+            `Are you absolutely sure you want to delete user ${email}?\nThis action is irreversible and will delete all their audit logs and active sessions.`,
+            true
+        );
+        if (!confirmed) {
+            return;
+        }
+        try {
+            const response = await defRequest(`{{ admin_path }}/users/${userId}/delete`);
+            if (response.ok) {
+                showToast('User account successfully deleted', 'success');
+                document.getElementById(`user-row-${userId}`).remove();
+            } else {
+                showToast('Failed to delete user account', 'error');
+            }
+        } catch (error) {
+            showToast('Connection error', 'error');
+        }
+    }
+
+    async function revokeSession(sessionId) {
+        const confirmed = await showConfirmModal(
+            'Revoke Session',
+            'Revoke this device session? The user on that device will be logged out immediately.',
+            true
+        );
+        if (!confirmed) {
+            return;
+        }
+        try {
+            const response = await defRequest(`{{ admin_path }}/sessions/${sessionId}/revoke`);
+            if (response.ok) {
+                showToast('Device session successfully revoked', 'success');
+                document.getElementById(`session-row-${sessionId}`).remove();
+            } else {
+                let errorMsg = 'Failed to revoke session';
+                try {
+                    const data = await response.json();
+                    if (data && data.detail) {
+                        errorMsg = data.detail;
+                    }
+                } catch (e) {}
+                showToast(errorMsg, 'error');
+            }
+        } catch (error) {
+            showToast('Connection error', 'error');
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs - AuthKit Admin{% endblock %}
+
+{% block extra_css %}
+.search-card {
+    background: rgba(23, 28, 41, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.search-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.search-input-wrapper input {
+    padding-left: 2.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    transition: all 0.25s ease;
+}
+
+.search-input-wrapper input:focus {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+    font-size: 1rem;
+}
+
+.filter-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 0.5rem;
+}
+
+.filter-chip {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.filter-chip:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.filter-chip.active {
+    background: var(--primary-glow);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.25);
+}
+
+/* Table elements */
+.action-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-family: monospace;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.action-auth { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.25); }
+.action-fail { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.25); }
+.action-sys { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.25); }
+.action-default { background: rgba(255, 255, 255, 0.08); color: var(--text-primary); border: 1px solid var(--border-color); }
+
+/* Inspect Button */
+.btn-inspect {
+    background: rgba(6, 182, 212, 0.08);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.btn-inspect:hover {
+    background: var(--accent-cyan);
+    color: black;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.35);
+}
+
+/* User Agent Styles */
+.ua-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.ua-main {
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.ua-sub {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+/* Syntax Highlighting */
+.json-key { color: #f472b6; font-weight: 500; }
+.json-string { color: #34d399; }
+.json-number { color: #60a5fa; }
+.json-boolean { color: #fbbf24; }
+.json-null { color: #9ca3af; font-style: italic; }
+
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 0.5rem;">
+    <h2 class="dashboard-title">System Audit Trails</h2>
+</div>
+<p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 2rem;">Monitor real-time user events, administrative actions, and security logs.</p>
+
+<!-- Redesigned Search & Filters Card -->
+<div class="search-card">
+    <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" onkeyup="filterAuditLogs()" placeholder="Filter logs by email, action, details, or IP address...">
+    </div>
+    <div class="filter-row">
+        <span class="filter-label">Quick Filters:</span>
+        <div class="filter-chip active" onclick="setFilterChip('all', this)">All</div>
+        <div class="filter-chip" onclick="setFilterChip('login', this)">Logins</div>
+        <div class="filter-chip" onclick="setFilterChip('logout', this)">Logouts</div>
+        <div class="filter-chip" onclick="setFilterChip('admin', this)">Admin Actions</div>
+        <div class="filter-chip" onclick="setFilterChip('fail', this)">Failures & Errors</div>
+    </div>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden; margin-bottom: 2.5rem;">
+    <div class="table-wrapper">
+        <table style="width: 100%; min-width: 950px; table-layout: auto;">
+            <thead>
+                <tr>
+                    <th style="width: 180px; min-width: 180px; white-space: nowrap;">Timestamp</th>
+                    <th style="min-width: 200px; white-space: nowrap;">User</th>
+                    <th style="width: 180px; min-width: 180px; white-space: nowrap;">Action</th>
+                    <th style="width: 120px; min-width: 120px; white-space: nowrap;">IP Address</th>
+                    <th style="width: 200px; min-width: 200px; white-space: nowrap;">User Agent</th>
+                    <th style="width: 120px; min-width: 120px; text-align: center; white-space: nowrap;">Metadata</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if not logs %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 3rem; font-style: italic;">No audit logs found.</td>
+                </tr>
+                {% endif %}
+                {% for log in logs %}
+                <tr class="log-row" data-action="{{ log.action }}">
+                    <td style="color: var(--text-secondary); white-space: nowrap;">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td style="font-weight: 500; white-space: nowrap;">{{ log.user.email if log.user else 'Anonymous' }}</td>
+                    <td>
+                        {% set act = log.action %}
+                        {% if 'login' in act or 'logout' in act or 'register' in act %}
+                            <span class="action-badge action-auth">{{ act }}</span>
+                        {% elif 'fail' in act or 'error' in act or 'revoke' in act or 'deactivate' in act %}
+                            <span class="action-badge action-fail">{{ act }}</span>
+                        {% elif 'admin' in act or 'config' in act %}
+                            <span class="action-badge action-sys">{{ act }}</span>
+                        {% else %}
+                            <span class="action-badge action-default">{{ act }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family: monospace; color: var(--text-secondary); white-space: nowrap;">{{ log.ip_address or 'Unknown' }}</td>
+                    <td>
+                        {% set ua = log.user_agent or '' %}
+                        {% set os = 'Unknown OS' %}
+                        {% if 'Windows' in ua %}{% set os = 'Windows' %}
+                        {% elif 'Macintosh' in ua or 'Mac OS' in ua %}{% set os = 'macOS' %}
+                        {% elif 'iPhone' in ua or 'iPad' in ua %}{% set os = 'iOS' %}
+                        {% elif 'Android' in ua %}{% set os = 'Android' %}
+                        {% elif 'Linux' in ua %}{% set os = 'Linux' %}
+                        {% endif %}
+                        
+                        {% set browser = 'Unknown Browser' %}
+                        {% if 'Chrome' in ua %}{% set browser = 'Chrome' %}
+                        {% elif 'Safari' in ua and 'Chrome' not in ua %}{% set browser = 'Safari' %}
+                        {% elif 'Firefox' in ua %}{% set browser = 'Firefox' %}
+                        {% elif 'Edge' in ua or 'Edg' in ua %}{% set browser = 'Edge' %}
+                        {% endif %}
+                        
+                        <div class="ua-info" title="{{ log.user_agent or 'Unknown' }}">
+                            <span class="ua-main">{{ os }} • {{ browser }}</span>
+                        </div>
+                    </td>
+                    <td style="text-align: center;">
+                        {% if log.details %}
+                        <button class="btn-inspect" onclick="inspectDetails({{ log.details | tojson | forceescape }})">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            Inspect
+                        </button>
+                        {% else %}
+                        <span style="color: rgba(255,255,255,0.15); font-weight: 500;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Details Inspector Modal -->
+<div id="details-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 500px;">
+        <h3 style="background: var(--primary-glow); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Metadata Details</h3>
+        <pre id="details-json-content" style="background: rgba(0, 0, 0, 0.4); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); font-family: monospace; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 350px; text-align: left;"></pre>
+        <div class="modal-actions" style="margin-top: 0.5rem;">
+            <button onclick="closeDetailsModal()" class="btn-modal-cancel" style="background: var(--primary-glow); border: none; color: white;">Close</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentFilterType = 'all';
+
+    function setFilterChip(type, chipEl) {
+        // Toggle active chip
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        chipEl.classList.add('active');
+        
+        currentFilterType = type;
+        filterAuditLogs();
+    }
+
+    // Live text and category filtration
+    function filterAuditLogs() {
+        const input = document.getElementById("search-input");
+        const query = input.value.toLowerCase();
+        const rows = document.querySelectorAll("tbody tr.log-row");
+        
+        rows.forEach(row => {
+            const action = row.getAttribute('data-action') || '';
+            const textContent = row.textContent.toLowerCase();
+            
+            // Check type filter matching
+            let matchesType = false;
+            if (currentFilterType === 'all') {
+                matchesType = true;
+            } else if (currentFilterType === 'login') {
+                matchesType = action.includes('login') && !action.includes('logout');
+            } else if (currentFilterType === 'logout') {
+                matchesType = action.includes('logout');
+            } else if (currentFilterType === 'admin') {
+                matchesType = action.includes('admin') || action.includes('revoke') || action.includes('delete');
+            } else if (currentFilterType === 'fail') {
+                matchesType = action.includes('fail') || action.includes('error');
+            }
+            
+            // Check text search matching
+            const matchesText = textContent.includes(query);
+            
+            // Display row if both match
+            row.style.display = (matchesType && matchesText) ? "" : "none";
+        });
+    }
+
+    // JSON syntax highlighting function
+    function syntaxHighlight(json) {
+        if (typeof json != 'string') {
+             json = JSON.stringify(json, undefined, 2);
+        }
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="json-' + cls + '">' + match + '</span>';
+        });
+    }
+
+    // Modal Operations
+    function inspectDetails(detailsObj) {
+        const modal = document.getElementById('details-modal');
+        const contentEl = document.getElementById('details-json-content');
+        
+        // Highlight JSON content
+        contentEl.innerHTML = syntaxHighlight(detailsObj);
+        modal.style.display = 'flex';
+    }
+
+    function closeDetailsModal() {
+        document.getElementById('details-modal').style.display = 'none';
+    }
+
+    // Close details modal when clicking outside
+    document.getElementById('details-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'details-modal') {
+            closeDetailsModal();
+        }
+    });
+</script>
+{% endblock %}
