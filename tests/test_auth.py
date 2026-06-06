@@ -1,6 +1,7 @@
+import uuid
 import pytest
 from sqlalchemy import select
-from authkit_fastapi.models import User, RefreshToken, AuditLog
+from authkit_fastapi.models_concrete import User, RefreshToken, AuditLog
 
 @pytest.mark.asyncio
 async def test_register_success(client, db):
@@ -46,7 +47,7 @@ async def test_login_success(client, seed_users, db):
     assert "authkit_refresh" in cookies
     
     # Verify session is created in DB
-    stmt = select(RefreshToken).where(RefreshToken.user_id == "user-uuid-222")
+    stmt = select(RefreshToken).where(RefreshToken.user_id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     result = await db.execute(stmt)
     sessions = result.scalars().all()
     assert len(sessions) == 1
@@ -93,7 +94,7 @@ async def test_refresh_token_rotation(client, seed_users, db):
     assert response.cookies.get("authkit_access") is not None
     
     # Verify old session is revoked and a new session is created in DB
-    stmt = select(RefreshToken).where(RefreshToken.user_id == "user-uuid-222").order_by(RefreshToken.created_at.asc())
+    stmt = select(RefreshToken).where(RefreshToken.user_id == uuid.UUID("22222222-2222-4222-a222-222222222222")).order_by(RefreshToken.created_at.asc())
     result = await db.execute(stmt)
     sessions = result.scalars().all()
     assert len(sessions) == 2
@@ -116,7 +117,7 @@ async def test_logout(client, seed_users, db):
     assert "authkit_access" not in response.cookies or response.cookies["authkit_access"] == ""
     
     # Database session should be marked as revoked
-    stmt = select(RefreshToken).where(RefreshToken.user_id == "user-uuid-222")
+    stmt = select(RefreshToken).where(RefreshToken.user_id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     result = await db.execute(stmt)
     session = result.scalar_one_or_none()
     assert session.is_revoked is True
@@ -130,7 +131,7 @@ async def test_logout_all(client, seed_users, db):
     access_token = login_2.json()["access_token"]
     
     # Confirm two active sessions exist
-    stmt = select(RefreshToken).where(RefreshToken.user_id == "user-uuid-222", RefreshToken.is_revoked == False)
+    stmt = select(RefreshToken).where(RefreshToken.user_id == uuid.UUID("22222222-2222-4222-a222-222222222222"), RefreshToken.is_revoked == False)
     result = await db.execute(stmt)
     assert len(result.scalars().all()) == 2
     
@@ -142,7 +143,7 @@ async def test_logout_all(client, seed_users, db):
     assert response.status_code == 200
     
     # Confirm all sessions are revoked
-    stmt_all = select(RefreshToken).where(RefreshToken.user_id == "user-uuid-222")
+    stmt_all = select(RefreshToken).where(RefreshToken.user_id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     res_all = await db.execute(stmt_all)
     sessions = res_all.scalars().all()
     assert len(sessions) == 2
@@ -157,17 +158,17 @@ async def test_reset_password_flow(client, seed_users, db, auth_kit):
     assert response.status_code == 200
     
     # Check that audit log has entry
-    stmt_audit = select(AuditLog).where(AuditLog.user_id == "user-uuid-222")
+    stmt_audit = select(AuditLog).where(AuditLog.user_id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     result_audit = await db.execute(stmt_audit)
     logs = result_audit.scalars().all()
     assert len(logs) == 1
     assert logs[0].action == "password_reset_requested"
     
     # Generate the token directly for testing reset endpoint
-    stmt = select(User).where(User.id == "user-uuid-222")
+    stmt = select(User).where(User.id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     res = await db.execute(stmt)
     user = res.scalar_one()
-    reset_token = auth_kit.auth_service.create_reset_token("user-uuid-222", user.hashed_password)
+    reset_token = auth_kit.auth_service.create_reset_token("22222222-2222-4222-a222-222222222222", user.hashed_password)
     
     # 2. Reset password using the token
     reset_resp = await client.post("/auth/reset-password", json={
@@ -187,10 +188,10 @@ async def test_reset_password_flow(client, seed_users, db, auth_kit):
 @pytest.mark.asyncio
 async def test_reset_token_cannot_be_reused(client, seed_users, db, auth_kit):
     # Fetch user's current password hash
-    stmt = select(User).where(User.id == "user-uuid-222")
+    stmt = select(User).where(User.id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     res = await db.execute(stmt)
     user = res.scalar_one()
-    reset_token = auth_kit.auth_service.create_reset_token("user-uuid-222", user.hashed_password)
+    reset_token = auth_kit.auth_service.create_reset_token("22222222-2222-4222-a222-222222222222", user.hashed_password)
     
     # First reset - success
     reset_resp = await client.post("/auth/reset-password", json={

@@ -1,4 +1,5 @@
 from typing import List, Optional, Any
+import uuid
 from fastapi import Request, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,7 +48,15 @@ class AuthKitDependencies:
                 headers={"WWW-Authenticate": "Bearer"},
             )
             
-        user_id = payload.get("sub")
+        user_id_str = payload.get("sub")
+        try:
+            uuid_user_id = uuid.UUID(user_id_str)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired access token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         
         # Verify that the session is active and not revoked in the database if refresh token cookie is present
         if self.refresh_token_model:
@@ -69,7 +78,7 @@ class AuthKitDependencies:
                                 headers={"WWW-Authenticate": "Bearer"},
                             )
 
-        stmt = select(self.user_model).where(self.user_model.id == user_id)
+        stmt = select(self.user_model).where(self.user_model.id == uuid_user_id)
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
         if not user:
@@ -81,12 +90,8 @@ class AuthKitDependencies:
 
     def requires_role(self, role: str) -> Any:
         """Return a route dependency callable that checks if the active user matches a specific role."""
-        async def dependency(current_user = Depends(lambda: self.get_current_active_user())) -> Any:
-            # We resolve get_current_active_user lazily at runtime
+        async def dependency(current_user = Depends(self.get_current_active_user)) -> Any:
             resolved_user = current_user
-            if hasattr(current_user, "__call__"):
-                # fallback/safety if called as dependency without resolution
-                pass
             if resolved_user.role != role:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -97,7 +102,7 @@ class AuthKitDependencies:
 
     def requires_roles(self, roles: List[str]) -> Any:
         """Return a route dependency callable that checks if the active user matches one of the specified roles."""
-        async def dependency(current_user = Depends(lambda: self.get_current_active_user())) -> Any:
+        async def dependency(current_user = Depends(self.get_current_active_user)) -> Any:
             resolved_user = current_user
             if resolved_user.role not in roles:
                 raise HTTPException(

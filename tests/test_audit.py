@@ -1,7 +1,8 @@
+import uuid
 import pytest
 from sqlalchemy import select
 from authkit_fastapi import AuthKit, AuthKitConfig
-from authkit_fastapi.models import User, RefreshToken, AuditLog
+from authkit_fastapi.models_concrete import User, RefreshToken, AuditLog
 
 @pytest.mark.asyncio
 async def test_automatic_register_audit_log(client, db):
@@ -42,7 +43,7 @@ async def test_manual_log_action(auth_kit, seed_users, db):
     log = await auth_kit.log_action(
         db=db,
         action="processed_payment",
-        user_id="user-uuid-222",
+        user_id=uuid.UUID("22222222-2222-4222-a222-222222222222"),
         details={"amount": 99.99, "currency": "USD"}
     )
     assert log is not None
@@ -53,7 +54,7 @@ async def test_manual_log_action(auth_kit, seed_users, db):
     stmt = select(AuditLog).where(AuditLog.id == log.id)
     persisted = (await db.execute(stmt)).scalar_one_or_none()
     assert persisted is not None
-    assert persisted.user_id == "user-uuid-222"
+    assert persisted.user_id == uuid.UUID("22222222-2222-4222-a222-222222222222")
 
 @pytest.mark.asyncio
 async def test_audit_logs_disabled_toggle(auth_kit_config, test_session_maker, db):
@@ -74,7 +75,7 @@ async def test_audit_logs_disabled_toggle(auth_kit_config, test_session_maker, d
     log = await disabled_authkit.log_action(
         db=db,
         action="some_action",
-        user_id="user-uuid-222"
+        user_id=uuid.UUID("22222222-2222-4222-a222-222222222222")
     )
     # Service should return None since logs are disabled
     assert log is None

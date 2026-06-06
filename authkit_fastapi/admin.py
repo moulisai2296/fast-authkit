@@ -46,10 +46,15 @@ def get_admin_router(auth_kit) -> APIRouter:
         if not payload or payload.get("type") != "access":
             return None
             
-        if payload.get("role") != config.admin_role:
+        if payload.get("app_role") != config.admin_role:
             return None
             
-        user_id = payload.get("sub")
+        user_id_str = payload.get("sub")
+        import uuid
+        try:
+            uuid_user_id = uuid.UUID(user_id_str)
+        except (ValueError, TypeError):
+            return None
         
         # Verify that the session is active and not revoked in the database
         refresh_token = request.cookies.get(config.cookie_name_refresh)
@@ -66,7 +71,7 @@ def get_admin_router(auth_kit) -> APIRouter:
                     if not session or session.is_revoked:
                         return None
 
-        stmt = select(auth_kit.user_model).where(auth_kit.user_model.id == user_id)
+        stmt = select(auth_kit.user_model).where(auth_kit.user_model.id == uuid_user_id)
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
         
@@ -147,7 +152,7 @@ def get_admin_router(auth_kit) -> APIRouter:
 
         # 2. Issue tokens
         jti = str(uuid.uuid4())
-        access_token = auth_service.create_access_token(user.id, user.role)
+        access_token = auth_service.create_access_token(user)
         refresh_token = auth_service.create_refresh_token(user.id, jti)
         
         # 3. Create session record
@@ -282,7 +287,7 @@ def get_admin_router(auth_kit) -> APIRouter:
 
     @router.post("/users/{user_id}/toggle-active")
     async def toggle_active(
-        user_id: str,
+        user_id: uuid.UUID,
         body: ToggleActiveRequest,
         request: Request,
         db: AsyncSession = Depends(get_db)
@@ -314,14 +319,14 @@ def get_admin_router(auth_kit) -> APIRouter:
             db=db,
             user_id=admin.id,
             action="admin_toggled_user_active",
-            details={"target_user_id": user_id, "is_active": body.is_active},
+            details={"target_user_id": str(user_id), "is_active": body.is_active},
             request=request
         )
         return {"success": True}
 
     @router.post("/users/{user_id}/change-role")
     async def change_role(
-        user_id: str,
+        user_id: uuid.UUID,
         body: ChangeRoleRequest,
         request: Request,
         db: AsyncSession = Depends(get_db)
@@ -349,14 +354,14 @@ def get_admin_router(auth_kit) -> APIRouter:
             db=db,
             user_id=admin.id,
             action="admin_changed_user_role",
-            details={"target_user_id": user_id, "old_role": old_role, "new_role": body.role},
+            details={"target_user_id": str(user_id), "old_role": old_role, "new_role": body.role},
             request=request
         )
         return {"success": True}
 
     @router.post("/users/{user_id}/delete")
     async def delete_user(
-        user_id: str,
+        user_id: uuid.UUID,
         request: Request,
         db: AsyncSession = Depends(get_db)
     ):
@@ -384,14 +389,14 @@ def get_admin_router(auth_kit) -> APIRouter:
             db=db,
             user_id=admin.id,
             action="admin_deleted_user",
-            details={"target_user_id": user_id, "email": email},
+            details={"target_user_id": str(user_id), "email": email},
             request=request
         )
         return {"success": True}
 
     @router.post("/sessions/{session_id}/revoke")
     async def revoke_user_session(
-        session_id: str,
+        session_id: uuid.UUID,
         request: Request,
         db: AsyncSession = Depends(get_db)
     ):
@@ -430,7 +435,7 @@ def get_admin_router(auth_kit) -> APIRouter:
             db=db,
             user_id=admin.id,
             action="admin_revoked_session",
-            details={"revoked_session_id": session_id, "target_user_id": session.user_id},
+            details={"revoked_session_id": str(session_id), "target_user_id": str(session.user_id)},
             request=request
         )
         return {"success": True}

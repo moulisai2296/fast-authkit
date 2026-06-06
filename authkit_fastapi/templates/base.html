@@ -467,7 +467,15 @@
             const confirmBtn = document.getElementById('confirm-modal-confirm');
             
             titleEl.textContent = title;
-            messageEl.innerHTML = message.replace(/\n/g, '<br>');
+            
+            // HTML-escape to prevent XSS from template injection or user variables
+            const escaped = message
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+            messageEl.innerHTML = escaped.replace(/\n/g, '<br>');
             
             if (isDanger) {
                 confirmBtn.classList.add('danger');

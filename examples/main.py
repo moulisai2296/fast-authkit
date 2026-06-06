@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import our plugin assets
 from authkit_fastapi import AuthKit, AuthKitConfig
-from authkit_fastapi.models import User, RefreshToken, AuditLog
+from authkit_fastapi.models_concrete import User, RefreshToken, AuditLog
 from examples.mock_db import async_session, init_and_seed_db
 
 # 1. Configuration

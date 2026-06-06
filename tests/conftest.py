@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 import pytest
 import pytest_asyncio
 from typing import AsyncGenerator
@@ -8,7 +9,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.pool import StaticPool
 
 from authkit_fastapi import AuthKit, AuthKitConfig
-from authkit_fastapi.models import Base, User, RefreshToken, AuditLog
+from authkit_fastapi.models import Base
+from authkit_fastapi.models_concrete import User, RefreshToken, AuditLog, BaseConcrete
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -28,6 +30,7 @@ async def test_engine():
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(BaseConcrete.metadata.create_all)
     yield engine
     await engine.dispose()
 
@@ -96,7 +99,7 @@ async def seed_users(db, auth_kit):
     user_pw = auth_service.hash_password("userpass")
     
     admin = User(
-        id="admin-uuid-111",
+        id=uuid.UUID("11111111-1111-4111-a111-111111111111"),
         email="admin@test.com",
         hashed_password=admin_pw,
         role="admin",
@@ -104,7 +107,7 @@ async def seed_users(db, auth_kit):
         is_verified=True
     )
     user = User(
-        id="user-uuid-222",
+        id=uuid.UUID("22222222-2222-4222-a222-222222222222"),
         email="user@test.com",
         hashed_password=user_pw,
         role="user",
@@ -112,7 +115,7 @@ async def seed_users(db, auth_kit):
         is_verified=True
     )
     deactivated = User(
-        id="user-uuid-333",
+        id=uuid.UUID("33333333-3333-4333-a333-333333333333"),
         email="deactivated@test.com",
         hashed_password=user_pw,
         role="user",
