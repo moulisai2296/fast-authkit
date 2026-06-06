@@ -1,7 +1,8 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import select
-from authkit_fastapi.models import Base, User, RefreshToken, AuditLog
+from authkit_fastapi.models import Base
+from authkit_fastapi.models_concrete import User, RefreshToken, AuditLog, BaseConcrete
 from authkit_fastapi.auth_service import AuthService
 from authkit_fastapi.config import AuthKitConfig
 
@@ -15,6 +16,7 @@ async def init_and_seed_db():
     # We do NOT remove sandbox.db so records persist across code changes/restarts!
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(BaseConcrete.metadata.create_all)
 
     async with async_session() as db:
         # Check if users already exist to avoid duplicate seeding

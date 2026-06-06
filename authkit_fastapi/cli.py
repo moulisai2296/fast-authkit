@@ -3,8 +3,9 @@ import sys
 import argparse
 import secrets
 
-MODELS_TEMPLATE = """from typing import Optional
-from sqlalchemy import String, ForeignKey, mapped_column
+MODELS_TEMPLATE = """import uuid
+from typing import Optional
+from sqlalchemy import Uuid, ForeignKey, mapped_column
 from sqlalchemy.orm import Mapped, relationship
 from authkit_fastapi.models import Base, BaseUserMixin, BaseRefreshTokenMixin, BaseAuditLogMixin
 
@@ -33,8 +34,8 @@ class User(Base, BaseUserMixin):
 class RefreshToken(Base, BaseRefreshTokenMixin):
     __tablename__ = "refresh_tokens"
     
-    user_id: Mapped[str] = mapped_column(
-        String(36), 
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, 
         ForeignKey("users.id", ondelete="CASCADE"), 
         index=True, 
         nullable=False
@@ -44,8 +45,8 @@ class RefreshToken(Base, BaseRefreshTokenMixin):
 class AuditLog(Base, BaseAuditLogMixin):
     __tablename__ = "audit_logs"
     
-    user_id: Mapped[Optional[str]] = mapped_column(
-        String(36), 
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid, 
         ForeignKey("users.id", ondelete="SET NULL"), 
         index=True, 
         nullable=True
@@ -149,6 +150,13 @@ AUTHKIT_ENABLE_SMTP=False
 """
 
 def main():
+    import sys
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(description="AuthKit FastAPI Plugin Command-Line Tool")
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 

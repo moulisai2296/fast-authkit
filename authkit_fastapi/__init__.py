@@ -1,7 +1,9 @@
 from fastapi import Depends, Request, HTTPException, status
+from typing import List, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from authkit_fastapi.config import AuthKitConfig
-from authkit_fastapi.models import User, RefreshToken, AuditLog, BaseUserMixin, BaseRefreshTokenMixin, BaseAuditLogMixin
+from authkit_fastapi.models import BaseUserMixin, BaseRefreshTokenMixin, BaseAuditLogMixin
+from authkit_fastapi.models_concrete import User, RefreshToken, AuditLog
 from authkit_fastapi.auth_service import AuthService
 from authkit_fastapi.dependencies import AuthKitDependencies
 from authkit_fastapi.utils.email import EmailService
@@ -94,6 +96,14 @@ class AuthKit:
     async def log_action(self, db, action, user_id=None, details=None, request=None):
         """Helper to write custom audit logs directly from the host application."""
         return await self.audit_service.log_action(db, action, user_id, details, request)
+
+    def requires_role(self, role: str) -> Any:
+        """Shortcut to require a specific role on an endpoint."""
+        return self.dependencies.requires_role(role)
+
+    def requires_roles(self, roles: List[str]) -> Any:
+        """Shortcut to require one of the specified roles on an endpoint."""
+        return self.dependencies.requires_roles(roles)
 
 __all__ = [
     "AuthKit",

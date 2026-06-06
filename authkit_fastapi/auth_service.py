@@ -27,23 +27,32 @@ class AuthService:
         except Exception:
             return False
 
-    def create_access_token(self, user_id: str, role: str) -> str:
+    def create_access_token(self, user: Any, role: Optional[str] = None) -> str:
         """Generate a short-lived access JWT."""
+        user_id = user.id if hasattr(user, "id") else user
+        user_role = getattr(user, "role", None)
+        if user_role is None:
+            user_role = role or "user"
+
         now = datetime.now(timezone.utc)
         payload = {
-            "sub": user_id,
-            "role": role,
+            "sub": str(user_id),
+            "app_role": user_role,
             "exp": now + timedelta(minutes=self.config.access_token_expire_minutes),
             "iat": now,
             "type": "access"
         }
+        if getattr(self.config, "access_token_claims", None) is not None:
+            custom_claims = self.config.access_token_claims(user)
+            if custom_claims:
+                payload.update(custom_claims)
         return jwt.encode(payload, self.config.secret_key, algorithm=self.config.algorithm)
 
-    def create_refresh_token(self, user_id: str, jti: str) -> str:
+    def create_refresh_token(self, user_id: Any, jti: str) -> str:
         """Generate a long-lived refresh JWT."""
         now = datetime.now(timezone.utc)
         payload = {
-            "sub": user_id,
+            "sub": str(user_id),
             "jti": jti,
             "exp": now + timedelta(days=self.config.refresh_token_expire_days),
             "iat": now,
@@ -51,13 +60,13 @@ class AuthService:
         }
         return jwt.encode(payload, self.config.secret_key, algorithm=self.config.algorithm)
 
-    def create_reset_token(self, user_id: str, password_hash: str) -> str:
+    def create_reset_token(self, user_id: Any, password_hash: str) -> str:
         """Generate a short-lived reset-password JWT, bound to the user's current password hash."""
         now = datetime.now(timezone.utc)
         import hashlib
         token_pwd_sec = hashlib.sha256(password_hash.encode()).hexdigest()[:16]
         payload = {
-            "sub": user_id,
+            "sub": str(user_id),
             "action": "reset_password",
             "pwd_sec": token_pwd_sec,
             "exp": now + timedelta(minutes=15),
@@ -65,10 +74,16 @@ class AuthService:
         }
         return jwt.encode(payload, self.config.secret_key, algorithm=self.config.algorithm)
 
-    def decode_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def decode_token(self, token: str, audience: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Decode and validate a JWT. Returns payload or None if invalid."""
         try:
-            return jwt.decode(token, self.config.secret_key, algorithms=[self.config.algorithm])
+            kwargs = {}
+            aud = audience or getattr(self.config, "jwt_audience", None)
+            if aud:
+                kwargs["audience"] = aud
+            else:
+                kwargs["options"] = {"verify_aud": False}
+            return jwt.decode(token, self.config.secret_key, algorithms=[self.config.algorithm], **kwargs)
         except jwt.PyJWTError:
             return None
 
@@ -86,8 +101,8 @@ class AuthService:
         user_agent: Optional[str] = None
     ) -> Any:
         """Record a new active refresh token session in the database."""
-        # Calculate expiration timezone-naive/aware consistently
-        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=self.config.refresh_token_expire_days)
+        # Calculate expiration timezone-aware consistently
+        expires_at = datetime.now(timezone.utc) + timedelta(days=self.config.refresh_token_expire_days)
         token_hash = self.hash_token(token)
         
         session = self.refresh_token_model(
@@ -116,10 +131,13 @@ class AuthService:
             return None
             
         # Check expiration date
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        db_expire = session.expires_at.replace(tzinfo=None) if session.expires_at else now
-        if now > db_expire:
-            return None
+        now = datetime.now(timezone.utc)
+        db_expire = session.expires_at
+        if db_expire is not None:
+            if db_expire.tzinfo is None:
+                db_expire = db_expire.replace(tzinfo=timezone.utc)
+            if now > db_expire:
+                return None
             
         # Verify hash match
         if session.token_hash != self.hash_token(token):

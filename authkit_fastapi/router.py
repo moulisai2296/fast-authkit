@@ -134,7 +134,7 @@ def get_auth_router(auth_kit) -> APIRouter:
             
         # Generate tokens
         jti = str(uuid.uuid4())
-        access_token = auth_service.create_access_token(user.id, user.role)
+        access_token = auth_service.create_access_token(user)
         refresh_token = auth_service.create_refresh_token(user.id, jti)
         
         # Save session to DB
@@ -201,7 +201,7 @@ def get_auth_router(auth_kit) -> APIRouter:
                 detail="Invalid or expired refresh token."
             )
             
-        user_id = payload.get("sub")
+        user_id_str = payload.get("sub")
         jti = payload.get("jti")
         
         # 3. Verify session in DB
@@ -212,8 +212,16 @@ def get_auth_router(auth_kit) -> APIRouter:
                 detail="Session revoked or invalid."
             )
             
+        try:
+            uuid_user_id = uuid.UUID(user_id_str)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token."
+            )
+
         # 4. Fetch user
-        stmt = select(auth_kit.user_model).where(auth_kit.user_model.id == user_id)
+        stmt = select(auth_kit.user_model).where(auth_kit.user_model.id == uuid_user_id)
         res = await db.execute(stmt)
         user = res.scalar_one_or_none()
         if not user or not user.is_active:
@@ -226,7 +234,7 @@ def get_auth_router(auth_kit) -> APIRouter:
         await auth_service.revoke_session(db, jti)
         
         new_jti = str(uuid.uuid4())
-        new_access = auth_service.create_access_token(user.id, user.role)
+        new_access = auth_service.create_access_token(user)
         new_refresh = auth_service.create_refresh_token(user.id, new_jti)
         
         # Save new session
@@ -378,8 +386,15 @@ def get_auth_router(auth_kit) -> APIRouter:
                 detail="Invalid or expired reset token."
             )
             
-        user_id = payload.get("sub")
-        stmt = select(auth_kit.user_model).where(auth_kit.user_model.id == user_id)
+        user_id_str = payload.get("sub")
+        try:
+            uuid_user_id = uuid.UUID(user_id_str)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token."
+            )
+        stmt = select(auth_kit.user_model).where(auth_kit.user_model.id == uuid_user_id)
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
         

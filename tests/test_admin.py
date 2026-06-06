@@ -1,6 +1,7 @@
+import uuid
 import pytest
 from sqlalchemy import select
-from authkit_fastapi.models import User, RefreshToken, AuditLog
+from authkit_fastapi.models_concrete import User, RefreshToken, AuditLog
 
 @pytest.mark.asyncio
 async def test_admin_dashboard_redirect_unauthenticated(client):
@@ -12,7 +13,7 @@ async def test_admin_dashboard_redirect_unauthenticated(client):
 @pytest.mark.asyncio
 async def test_admin_dashboard_unauthorized_user(client, seed_users, auth_kit):
     # Log in as normal user
-    access_token = auth_kit.auth_service.create_access_token("user-uuid-222", "user")
+    access_token = auth_kit.auth_service.create_access_token("22222222-2222-4222-a222-222222222222", "user")
     
     # Attempt dashboard access
     client.cookies.set("authkit_access", access_token)
@@ -25,7 +26,7 @@ async def test_admin_dashboard_unauthorized_user(client, seed_users, auth_kit):
 @pytest.mark.asyncio
 async def test_admin_dashboard_success(client, seed_users, auth_kit):
     # Log in as admin
-    access_token = auth_kit.auth_service.create_access_token("admin-uuid-111", "admin")
+    access_token = auth_kit.auth_service.create_access_token("11111111-1111-4111-a111-111111111111", "admin")
     client.cookies.set("authkit_access", access_token)
     
     response = await client.get("/admin/dashboard")
@@ -58,12 +59,12 @@ async def test_admin_login_post_failure_role(client, seed_users):
 
 @pytest.mark.asyncio
 async def test_admin_toggle_user_active(client, seed_users, auth_kit, db):
-    admin_token = auth_kit.auth_service.create_access_token("admin-uuid-111", "admin")
+    admin_token = auth_kit.auth_service.create_access_token("11111111-1111-4111-a111-111111111111", "admin")
     client.cookies.set("authkit_access", admin_token)
     
     # Deactivate normal user
     response = await client.post(
-        "/admin/users/user-uuid-222/toggle-active",
+        "/admin/users/22222222-2222-4222-a222-222222222222/toggle-active",
         json={"is_active": False}
     )
     assert response.status_code == 200
@@ -71,18 +72,18 @@ async def test_admin_toggle_user_active(client, seed_users, auth_kit, db):
     
     # Verify user state in DB
     db.expire_all()
-    stmt = select(User).where(User.id == "user-uuid-222")
+    stmt = select(User).where(User.id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     user = (await db.execute(stmt)).scalar_one()
     assert user.is_active is False
 
 @pytest.mark.asyncio
 async def test_admin_change_user_role(client, seed_users, auth_kit, db):
-    admin_token = auth_kit.auth_service.create_access_token("admin-uuid-111", "admin")
+    admin_token = auth_kit.auth_service.create_access_token("11111111-1111-4111-a111-111111111111", "admin")
     client.cookies.set("authkit_access", admin_token)
     
     # Change role to moderator
     response = await client.post(
-        "/admin/users/user-uuid-222/change-role",
+        "/admin/users/22222222-2222-4222-a222-222222222222/change-role",
         json={"role": "moderator"}
     )
     assert response.status_code == 200
@@ -90,19 +91,19 @@ async def test_admin_change_user_role(client, seed_users, auth_kit, db):
     
     # Verify DB
     db.expire_all()
-    stmt = select(User).where(User.id == "user-uuid-222")
+    stmt = select(User).where(User.id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     user = (await db.execute(stmt)).scalar_one()
     assert user.role == "moderator"
 
 @pytest.mark.asyncio
 async def test_admin_revoke_session(client, seed_users, auth_kit, db):
-    admin_token = auth_kit.auth_service.create_access_token("admin-uuid-111", "admin")
+    admin_token = auth_kit.auth_service.create_access_token("11111111-1111-4111-a111-111111111111", "admin")
     client.cookies.set("authkit_access", admin_token)
     
     # Create a user session
     session = await auth_kit.auth_service.create_session(
         db=db,
-        user_id="user-uuid-222",
+        user_id=uuid.UUID("22222222-2222-4222-a222-222222222222"),
         jti="test-session-jti",
         token="some-refresh-token"
     )
@@ -121,35 +122,35 @@ async def test_admin_revoke_session(client, seed_users, auth_kit, db):
 
 @pytest.mark.asyncio
 async def test_admin_delete_user(client, seed_users, auth_kit, db):
-    admin_token = auth_kit.auth_service.create_access_token("admin-uuid-111", "admin")
+    admin_token = auth_kit.auth_service.create_access_token("11111111-1111-4111-a111-111111111111", "admin")
     client.cookies.set("authkit_access", admin_token)
     
     # Delete normal user
-    response = await client.post("/admin/users/user-uuid-222/delete")
+    response = await client.post("/admin/users/22222222-2222-4222-a222-222222222222/delete")
     assert response.status_code == 200
     assert response.json()["success"] is True
     
     # Verify user is gone
     db.expire_all()
-    stmt = select(User).where(User.id == "user-uuid-222")
+    stmt = select(User).where(User.id == uuid.UUID("22222222-2222-4222-a222-222222222222"))
     assert (await db.execute(stmt)).scalar_one_or_none() is None
 
 @pytest.mark.asyncio
 async def test_admin_cannot_revoke_own_session(client, seed_users, auth_kit, db):
-    admin_token = auth_kit.auth_service.create_access_token("admin-uuid-111", "admin")
+    admin_token = auth_kit.auth_service.create_access_token("11111111-1111-4111-a111-111111111111", "admin")
     client.cookies.set("authkit_access", admin_token)
     
     # Create the admin's active session
     session = await auth_kit.auth_service.create_session(
         db=db,
-        user_id="admin-uuid-111",
+        user_id=uuid.UUID("11111111-1111-4111-a111-111111111111"),
         jti="admin-session-jti",
         token="admin-refresh-token"
     )
     session_id = session.id
     
     # Set the refresh token cookie matching the session's jti
-    refresh_token = auth_kit.auth_service.create_refresh_token("admin-uuid-111", "admin-session-jti")
+    refresh_token = auth_kit.auth_service.create_refresh_token("11111111-1111-4111-a111-111111111111", "admin-session-jti")
     client.cookies.set("authkit_refresh", refresh_token)
     
     # Attempt to revoke own session
@@ -165,18 +166,18 @@ async def test_admin_cannot_revoke_own_session(client, seed_users, auth_kit, db)
 
 @pytest.mark.asyncio
 async def test_admin_revoked_session_logout(client, seed_users, auth_kit, db):
-    admin_token = auth_kit.auth_service.create_access_token("admin-uuid-111", "admin")
+    admin_token = auth_kit.auth_service.create_access_token("11111111-1111-4111-a111-111111111111", "admin")
     client.cookies.set("authkit_access", admin_token)
     
     # Create session
     session = await auth_kit.auth_service.create_session(
         db=db,
-        user_id="admin-uuid-111",
+        user_id=uuid.UUID("11111111-1111-4111-a111-111111111111"),
         jti="admin-session-jti-2",
         token="admin-refresh-token-2"
     )
     
-    refresh_token = auth_kit.auth_service.create_refresh_token("admin-uuid-111", "admin-session-jti-2")
+    refresh_token = auth_kit.auth_service.create_refresh_token("11111111-1111-4111-a111-111111111111", "admin-session-jti-2")
     client.cookies.set("authkit_refresh", refresh_token)
     
     # First access - success

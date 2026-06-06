@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
 import re
+import uuid
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 
 def validate_password_complexity(v: str) -> str:
@@ -28,7 +29,7 @@ class UserCreate(UserBase):
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: str
+    id: uuid.UUID
     role: str
     is_active: bool
     is_verified: bool
@@ -72,8 +73,8 @@ class TokenResponse(BaseModel):
 class AuditLogRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
-    id: str
-    user_id: Optional[str] = None
+    id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
     action: str
     details: Optional[Dict[str, Any]] = None
     ip_address: Optional[str] = None
@@ -83,8 +84,8 @@ class AuditLogRead(BaseModel):
 class SessionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
-    id: str
-    user_id: str
+    id: uuid.UUID
+    user_id: uuid.UUID
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     expires_at: datetime

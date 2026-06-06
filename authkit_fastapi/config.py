@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, Dict
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -12,6 +12,7 @@ class AuthKitConfig(BaseSettings):
 
     secret_key: str = Field(default="dev-secret-change-me-in-production-1234567890!")
     algorithm: str = Field(default="HS256")
+    jwt_audience: Optional[str] = Field(default=None)
     
     # Token expiration times
     access_token_expire_minutes: int = Field(default=15)
@@ -43,3 +44,7 @@ class AuthKitConfig(BaseSettings):
     # Custom Callback for email sending (alternative to SMTP)
     # Signature: async def send_email(email: str, subject: str, body_text: str, body_html: str) -> None
     email_sender_callback: Optional[Callable[[str, str, str, str], Any]] = Field(default=None, exclude=True)
+
+    # Custom callback to inject extra claims into the access token payload.
+    # Signature: Optional[Callable[[Any], Dict[str, Any]]]
+    access_token_claims: Optional[Callable[[Any], Dict[str, Any]]] = Field(default=None, exclude=True)

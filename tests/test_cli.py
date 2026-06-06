@@ -74,3 +74,9 @@ def test_cli_bootstrap_does_not_overwrite(tmp_path):
             
     finally:
         os.chdir(original_cwd)
+
+def test_cli_main_help():
+    with patch("sys.argv", ["authkit", "--help"]):
+        from authkit_fastapi.cli import main
+        with pytest.raises(SystemExit):
+            main()

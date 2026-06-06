@@ -130,9 +130,17 @@ from authkit_fastapi import AuthKit, AuthKitConfig
 from database import async_session_maker  # Your existing async session maker
 from models import User, RefreshToken, AuditLog
 
+# Configure settings (including custom claims and audience verification)
 config = AuthKitConfig(
     secret_key="your-secure-secret-key",
     cookie_secure=True,  # Set to True in production (HTTPS)
+    
+    # Custom Callback to inject extra claims into the Access Token payload
+    # Signature: Callable[[Any], Dict[str, Any]]
+    access_token_claims=lambda user: {"tenant_id": "hotel-123", "aud": "my-app"},
+    
+    # Expected JWT audience for verification (optional)
+    jwt_audience="my-app"
 )
 
 auth_kit = AuthKit(
@@ -220,6 +228,26 @@ class CustomUserCreate(UserCreate):
 class CustomUserRead(UserRead):
     full_name: Optional[str]
 ```
+
+### Extensible JWT Claims & Supabase/Hasura Compatibility
+AuthKit makes it easy to integrate custom claims (like `hotel_id` or `tenant_id`) into your access token payloads. 
+
+#### 1. Custom Claims Callback Hook
+Register a custom callback during initialization to dynamic add key-value pairs to the payload:
+```python
+config = AuthKitConfig(
+    secret_key="your-secret-key",
+    access_token_claims=lambda user: {
+        "hotel_id": getattr(user, "hotel_id", None),
+        "user_email": user.email
+    }
+)
+```
+
+#### 2. Supabase/Hasura app_role Compatibility
+By default, AuthKit puts the user's role in the `"app_role"` claim rather than `"role"`. This is done to prevent conflicts with database-as-a-service providers (such as Supabase, Hasura, or PostgREST) which reserve `"role"` for database RLS policies (e.g. requiring `"role"` to be `"authenticated"`).
+
+---
 
 ### Writing Custom Audit Logs
 Keep track of critical operations in your app by using the hybrid audit logger:
